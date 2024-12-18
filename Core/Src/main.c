@@ -829,7 +829,15 @@ void StartDefaultTask(void *argument)
 		.phy_addr = 0
 	};
 
-	uint8_t mac[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab};
+	// set mac address using UID of micro
+	// first 3 bytes are ST Micro's Vendor ID
+	uint8_t mac[] = {0x00, 0x80, 0xE1, 0x00, 0x00, 0x00};
+
+	uint32_t uid = HAL_GetUIDw0();
+
+	mac[3] = (uid >> 16) & 0xFF;
+	mac[4] = (uid >> 8) & 0xFF;
+	mac[5] = uid & 0xFF;
 
 	struct mg_tcpip_if mif = {
 		.ip = mg_htonl(MG_U32(192, 168, 68, 44)),
