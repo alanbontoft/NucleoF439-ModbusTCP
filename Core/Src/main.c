@@ -251,7 +251,7 @@ static void handle_modbus_pdu(struct mg_connection *c, uint8_t *buf,
     uint8_t response[260] = {0};
     memcpy(response, buf, 8);
     uint16_t tid = mg_ntohs(*(uint16_t *) &buf[0]);  // Transaction ID
-    uint16_t pid = mg_ntohs(*(uint16_t *) &buf[0]);  // Protocol ID
+    uint16_t pid = mg_ntohs(*(uint16_t *) &buf[2]);  // Protocol ID
     uint16_t len = mg_ntohs(*(uint16_t *) &buf[4]);  // PDU length
     uint8_t uid = buf[6];                            // Unit identifier
     if (func == 6) {  // write single holding register
@@ -823,6 +823,25 @@ void StartDefaultTask(void *argument)
 
 	mg_mgr_init(&mgr);
 
+	  // Initialise Mongoose network stack
+	struct mg_tcpip_driver_stm32f_data driver_data = {
+		.mdc_cr = 4,
+		.phy_addr = 0
+	};
+
+	uint8_t mac[] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab};
+
+	struct mg_tcpip_if mif = {
+		.ip = mg_htonl(MG_U32(192, 168, 68, 44)),
+		.mask = mg_htonl(MG_U32(255, 255, 252, 0)),
+		.gw = mg_htonl(MG_U32(192, 168, 68, 1)),
+		.driver = &mg_tcpip_driver_stm32f,
+		.driver_data = &driver_data
+	};
+
+	memcpy(&mif.mac, mac, 6);
+
+	mg_tcpip_init(&mgr, &mif);
 	mg_listen(&mgr, "tcp://0.0.0.0:502", modbus_ev_handler, NULL);
   /* Infinite loop */
   for(;;)
