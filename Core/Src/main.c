@@ -64,6 +64,20 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for ledTask */
+osThreadId_t ledTaskHandle;
+const osThreadAttr_t ledTask_attributes = {
+  .name = "ledTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for registerTask */
+osThreadId_t registerTaskHandle;
+const osThreadAttr_t registerTask_attributes = {
+  .name = "registerTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
 /* USER CODE BEGIN PV */
 uint8_t counter = 1;
 struct mg_connection* conn = NULL;
@@ -126,6 +140,8 @@ static void MX_ETH_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_USB_OTG_FS_PCD_Init(void);
 void StartDefaultTask(void *argument);
+void StartLedTask(void *argument);
+void StartRegisterTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -549,6 +565,12 @@ int main(void)
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
+  /* creation of ledTask */
+  ledTaskHandle = osThreadNew(StartLedTask, NULL, &ledTask_attributes);
+
+  /* creation of registerTask */
+  registerTaskHandle = osThreadNew(StartRegisterTask, NULL, &registerTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -791,13 +813,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-static void web_fn(struct mg_connection *c, int ev, void *ev_data) {
-  if (ev == MG_EV_HTTP_MSG)
-  {
-    mg_http_reply(c, 200, "Content-Type: text/plain\r\n", "Hello, %s\nCounter = %d", "mongoose", counter++);
-  }
-}
-
 void log_fn(char ch, void *param)
 {
 	HAL_UART_Transmit(&huart3, (uint8_t*)&ch, 1, 1);
@@ -815,6 +830,9 @@ void log_fn(char ch, void *param)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
+
+	osDelay(100);
+
 	struct mg_mgr mgr;
 
 	mg_log_set(MG_LL_DEBUG);
@@ -840,9 +858,9 @@ void StartDefaultTask(void *argument)
 	mac[5] = uid & 0xFF;
 
 	struct mg_tcpip_if mif = {
-		.ip = mg_htonl(MG_U32(192, 168, 68, 44)),
-		.mask = mg_htonl(MG_U32(255, 255, 252, 0)),
-		.gw = mg_htonl(MG_U32(192, 168, 68, 1)),
+		.ip = mg_htonl(MG_U32(172, 31, 7, 125)),
+		.mask = mg_htonl(MG_U32(255, 255, 255, 0)),
+		.gw = mg_htonl(MG_U32(172, 31, 7, 1)),
 		.driver = &mg_tcpip_driver_stm32f,
 		.driver_data = &driver_data
 	};
@@ -855,8 +873,48 @@ void StartDefaultTask(void *argument)
   for(;;)
   {
 	  mg_mgr_poll(&mgr, 1000);
+	  osDelay(1);
   }
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartLedTask */
+/**
+* @brief Function implementing the ledTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartLedTask */
+void StartLedTask(void *argument)
+{
+  /* USER CODE BEGIN StartLedTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	  HAL_GPIO_TogglePin(GPIOB, LD1_Pin);
+	  osDelay(250);
+  }
+  /* USER CODE END StartLedTask */
+}
+
+/* USER CODE BEGIN Header_StartRegisterTask */
+/**
+* @brief Function implementing the registerTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartRegisterTask */
+void StartRegisterTask(void *argument)
+{
+  /* USER CODE BEGIN StartRegisterTask */
+  /* Infinite loop */
+  for(;;)
+  {
+	for (int i=0; i < 10; i++)
+		modbus_reg_out_mem[i] += (1 + i);
+    osDelay(2000);
+  }
+  /* USER CODE END StartRegisterTask */
 }
 
 /**
